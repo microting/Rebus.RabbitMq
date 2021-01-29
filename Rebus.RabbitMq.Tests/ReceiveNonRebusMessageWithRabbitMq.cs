@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using RabbitMQ.Client;
 using Rebus.Activation;
+using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Exceptions;
 using Rebus.Extensions;
