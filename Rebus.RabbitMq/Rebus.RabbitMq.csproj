@@ -40,7 +40,7 @@
     <DocumentationFile>bin\Release\Rebus.RabbitMq.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microting.Rebus" Version="7.1.0" />
+    <PackageReference Include="Microting.Rebus" Version="7.1.1" />
     <PackageReference Include="RabbitMq.Client" Version="6.2.1" />
   </ItemGroup>
   <ItemGroup>
