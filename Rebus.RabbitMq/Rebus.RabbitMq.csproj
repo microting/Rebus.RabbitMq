@@ -5,7 +5,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Rebus</RootNamespace>
     <AssemblyName>Rebus.RabbitMq</AssemblyName>
-    <TargetFrameworks>net5.0</TargetFrameworks>
+    <TargetFramework>net6.0</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Authors>mookid8000</Authors>
     <PackageLicenseUrl></PackageLicenseUrl>
@@ -41,7 +41,7 @@
     <DocumentationFile>bin\Release\Rebus.RabbitMq.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microting.Rebus" Version="7.1.2" />
+    <PackageReference Include="Microting.Rebus" Version="7.2.0" />
     <PackageReference Include="RabbitMq.Client" Version="6.2.2" />
   </ItemGroup>
   <ItemGroup>
