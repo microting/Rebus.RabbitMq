@@ -28,6 +28,10 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.x
+    - name: Setup .NET 6.0
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 6.0.x
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
@@ -35,7 +39,6 @@ jobs:
     - name: Test
       run: dotnet test Rebus.RabbitMq.Tests --no-build --verbosity normal -c Release
   build-windows:
-    needs: build-ubuntu
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
@@ -51,6 +54,10 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.x
+    - name: Setup .NET 6.0
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 6.0.x
     - name: Install rabbitmq
       shell: pwsh
       run: choco install rabbitmq -Version 3.8.5
@@ -63,7 +70,7 @@ jobs:
     - name: Test
       run: dotnet test Rebus.RabbitMq.Tests --no-build --verbosity normal -c Release
   deploy:
-    needs: build-windows
+    needs: [build-ubuntu]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -79,6 +86,10 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.x
+    - name: Setup .NET 6.0
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 6.0.x
     - name: Install dependencies
       run: |
         dotnet clean
