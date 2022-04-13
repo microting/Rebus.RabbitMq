@@ -13,32 +13,32 @@ using Rebus.Tests.Contracts.Extensions;
 
 #pragma warning disable 1998
 
-namespace Rebus.RabbitMq.Tests
+namespace Rebus.RabbitMq.Tests;
+
+[TestFixture]
+public class TestRabbitMqAndExplicitRouting : FixtureBase
 {
-    [TestFixture]
-    public class TestRabbitMqAndExplicitRouting : FixtureBase
+    readonly List<ConnectionEndpoint> _clientConnectionEndpoints = new()
     {
-        readonly List<ConnectionEndpoint>  _clientConnectionEndpoints = new List<ConnectionEndpoint>
+        new ConnectionEndpoint
         {
-            new ConnectionEndpoint
-            {
-                ConnectionString =  RabbitMqTransportFactory.ConnectionString
-            }
-        };
-        readonly List<ConnectionEndpoint>  _serverConnectionEndpoints = new List<ConnectionEndpoint>
+            ConnectionString =  RabbitMqTransportFactory.ConnectionString
+        }
+    };
+    readonly List<ConnectionEndpoint> _serverConnectionEndpoints = new()
+    {
+        new ConnectionEndpoint
         {
-            new ConnectionEndpoint
-            {
-                ConnectionString =  RabbitMqTransportFactory.ConnectionString,
-                SslSettings = new SslSettings(false, "localhost")
-            }
-        };
+            ConnectionString =  RabbitMqTransportFactory.ConnectionString,
+            SslSettings = new SslSettings(false, "localhost")
+        }
+    };
 
-        IBus _bus;
+    IBus _bus;
 
-        protected override void SetUp()
-        {
-            var client = Using(new BuiltinHandlerActivator());
+    protected override void SetUp()
+    {
+        var client = Using(new BuiltinHandlerActivator());
 
             _bus = Configure.With(client)
                 .Logging(l => l.Console(minLevel: LogLevel.Warn))
@@ -47,40 +47,41 @@ namespace Rebus.RabbitMq.Tests
                 .Start();
         }
 
-        [Test]
-        public async Task ReceivesManuallyRoutedMessage()
+    [Test]
+    public async Task ReceivesManuallyRoutedMessage()
+    {
+        var queueName = TestConfig.GetName("manual_routing");
+        var gotTheMessage = new ManualResetEvent(false);
+
+        var (activator, starter) = StartServer(queueName);
+
+        activator.Handle<string>(async _ =>
         {
-            var queueName = TestConfig.GetName("manual_routing");
-            var gotTheMessage = new ManualResetEvent(false);
+            gotTheMessage.Set();
+        });
+        activator.Bus.Advanced.Workers.SetNumberOfWorkers(5);
 
-            var activator = StartServer(queueName).Handle<string>(async str =>
-            {
-                gotTheMessage.Set();
-            });
+        Console.WriteLine($"Sending 'hej med dig min ven!' message to '{queueName}'");
 
-            activator.Bus.Advanced.Workers.SetNumberOfWorkers(5);
-            Console.WriteLine($"Sending 'hej med dig min ven!' message to '{queueName}'");
+        await _bus.Advanced.Routing.Send(queueName, "hej med dig min ven!");
 
-            await _bus.Advanced.Routing.Send(queueName, "hej med dig min ven!");
-
-            Console.WriteLine("Waiting for message to arrive");
+        Console.WriteLine("Waiting for message to arrive");
 
             gotTheMessage.WaitOrDie(TimeSpan.FromSeconds(50));
 
             Console.WriteLine("Got it :)");
         }
 
-        BuiltinHandlerActivator StartServer(string queueName)
+        (BuiltinHandlerActivator activator, IBusStarter starter) StartServer(string queueName)
         {
             var activator = Using(new BuiltinHandlerActivator());
 
-            Configure.With(activator)
+            var starter = Configure.With(activator)
                 .Logging(l => l.Console(minLevel: LogLevel.Warn))
                 .Transport(t => t.UseRabbitMq(_serverConnectionEndpoints, queueName))
                 .Options(o => o.SetNumberOfWorkers(0))
-                .Start();
+                .Create();
 
-            return activator;
+            return (activator, starter);
         }
-    }
 }

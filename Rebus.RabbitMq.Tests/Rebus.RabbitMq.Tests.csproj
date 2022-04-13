@@ -1,47 +1,25 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
- <PropertyGroup>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Rebus.RabbitMq.Tests</RootNamespace>
-    <AssemblyName>Rebus.RabbitMq.Tests</AssemblyName>
-    <TargetFramework>net6.0</TargetFramework>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>RELEASE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="..\Rebus.RabbitMq\Internals\FullyQualifiedRoutingKey.cs" Link="Links\FullyQualifiedRoutingKey.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Rebus.RabbitMq\Rebus.RabbitMq.csproj" />
-    <PackageReference Include="microsoft.net.test.sdk" Version="17.1.0" />
-    <PackageReference Include="Microting.Rebus" Version="7.3.1" />
-    <PackageReference Include="Microting.Rebus.Tests.Contracts" Version="7.2.0" />
-    <PackageReference Include="nunit" Version="3.13.3" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.2.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="rabbitmq.client" Version="6.2.4" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Links\" />
-  </ItemGroup>
+	<PropertyGroup>
+		<OutputType>Library</OutputType>
+		<TargetFramework>net6.0</TargetFramework>
+		<LangVersion>10</LangVersion>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Rebus.RabbitMq\Rebus.RabbitMq.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="microsoft.net.test.sdk" Version="17.1.0" />
+		<PackageReference Include="nunit" Version="3.13.3" />
+		<PackageReference Include="NUnit3TestAdapter" Version="4.2.1">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="RabbitMQ.Client" Version="6.2.4" />
+		<PackageReference Include="Microting.Rebus" Version="7.3.2" />
+		<PackageReference Include="Microting.Rebus.Tests.Contracts" Version="7.3.2" />
+	</ItemGroup>
+	<ItemGroup>
+		<Folder Include="Internals\" />
+	</ItemGroup>
 </Project>

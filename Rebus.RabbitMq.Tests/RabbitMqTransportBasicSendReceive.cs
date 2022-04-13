@@ -1,8 +1,11 @@
 ﻿using NUnit.Framework;
 using Rebus.Tests.Contracts.Transports;
+// ReSharper disable ArgumentsStyleLiteral
 
-namespace Rebus.RabbitMq.Tests
+namespace Rebus.RabbitMq.Tests;
+
+[TestFixture]
+public class RabbitMqTransportBasicSendReceive : BasicSendReceive<RabbitMqTransportFactory>
 {
-    [TestFixture]
-    public class RabbitMqTransportBasicSendReceive : BasicSendReceive<RabbitMqTransportFactory> { }
+    // protected override TransportBehavior Behavior => new(ReturnsNullWhenQueueIsEmpty: true);
 }
