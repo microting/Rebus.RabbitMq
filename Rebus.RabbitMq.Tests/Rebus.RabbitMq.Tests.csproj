@@ -16,8 +16,8 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="RabbitMQ.Client" Version="6.2.4" />
-		<PackageReference Include="Microting.Rebus" Version="7.3.2" />
-		<PackageReference Include="Microting.Rebus.Tests.Contracts" Version="7.3.2" />
+		<PackageReference Include="Microting.Rebus" Version="7.3.3" />
+		<PackageReference Include="Microting.Rebus.Tests.Contracts" Version="7.3.3" />
 	</ItemGroup>
 	<ItemGroup>
 		<Folder Include="Internals\" />
