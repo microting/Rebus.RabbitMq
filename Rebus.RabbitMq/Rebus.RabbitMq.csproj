@@ -15,7 +15,7 @@
 		<PackageIcon>little_rebusbus2_copy-500x500.png</PackageIcon>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Microting.Rebus" Version="7.3.5" />
+		<PackageReference Include="Microting.Rebus" Version="7.3.6" />
 		<PackageReference Include="RabbitMq.Client" Version="6.3.0" />
 	</ItemGroup>
 	<ItemGroup>
