@@ -4,7 +4,7 @@
 		<RootNamespace>Rebus</RootNamespace>
 		<LangVersion>10</LangVersion>
 		<AssemblyName>Rebus.RabbitMq</AssemblyName>
-		<TargetFramework>net6.0</TargetFramework>
+		<TargetFramework>net7.0</TargetFramework>
 		<Authors>mookid8000</Authors>
 		<PackageProjectUrl>https://rebus.fm/what-is-rebus/</PackageProjectUrl>
 		<Copyright>Copyright Rebus FM ApS 2012</Copyright>
@@ -17,7 +17,7 @@
     <PackageId>Microting.Rebus.RabbitMq</PackageId>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Microting.Rebus" Version="7.3.8" />
+		<PackageReference Include="Microting.Rebus" Version="7.3.10" />
 		<PackageReference Include="RabbitMq.Client" Version="6.4.0" />
 	</ItemGroup>
 	<ItemGroup>
