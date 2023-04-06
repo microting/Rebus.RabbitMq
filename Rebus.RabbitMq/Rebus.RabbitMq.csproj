@@ -16,7 +16,7 @@
     <PackageId>Microting.Rebus.RabbitMq</PackageId>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Microting.Rebus" Version="7.3.12" />
+		<PackageReference Include="Microting.Rebus" Version="8.0.0-pre" />
 		<PackageReference Include="RabbitMq.Client" Version="6.5.0" />
 	</ItemGroup>
 	<ItemGroup>
