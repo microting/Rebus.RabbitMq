@@ -118,6 +118,30 @@
 ## 7.3.5
 * Support basic URL-encoded credentials in URI
 
+## 7.4.1
+* Make publisher confirms timeout configurable via an additional `EnablePublisherConfirms` overload
+
+## 7.4.2
+* Small optimizations to reduce the amount of work done when mapping headers
+
+## 7.4.3
+* Update RabbitMq.Client dependency to 6.4.0
+
+## 7.4.4
+* Avoid creating a RabbitMQ connection during initialization, if there's no need for it because all declarations have been disabled
+
+## 7.4.5
+* Enable retries when trying to create a queue
+
+## 7.4.6
+* Add experimental support for sending deferred messages using the RabbitMQ Delayed Message Exchange plugin (use `.Timeouts(t => t.UseDelayedMessageExchange("RebusDelayed"))`)
+
+## 8.0.0
+* Update Rebus dependency to 7
+
+## 9.0.0-alpha01
+* Update to Rebus 8
+
 ---
 
 [bzuu]: https://github.com/bzuu

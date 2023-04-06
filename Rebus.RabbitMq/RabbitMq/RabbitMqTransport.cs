@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -20,6 +19,7 @@ using Rebus.Config;
 using Rebus.Exceptions;
 using Rebus.Internals;
 using Headers = Rebus.Messages.Headers;
+using System.Net;
 // ReSharper disable AccessToDisposedClosure
 
 // ReSharper disable EmptyGeneralCatchClause
@@ -36,7 +36,6 @@ namespace Rebus.RabbitMq;
 /// </summary>
 public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializable, ISubscriptionStorage
 {
-
     /// <summary>
     /// <see cref="ShutdownEventArgs.ReplyCode"/> value that indicates that a queue does not exist
     /// </summary>
@@ -62,6 +61,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
     bool _declareInputQueue = true;
     bool _bindInputQueue = true;
     bool _publisherConfirmsEnabled = true;
+    TimeSpan _publisherConfirmsTimeout;
 
     string _directExchangeName = RabbitMqOptionsBuilder.DefaultDirectExchangeName;
     string _topicExchangeName = RabbitMqOptionsBuilder.DefaultTopicExchangeName;
@@ -160,11 +160,19 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
     }
 
     /// <summary>
-    /// Sets whether to use the publisher confirms protocol
+    /// Sets whether to use the publisher confirms protocol. When <paramref name="value"/> is set to true,
+    /// the <paramref name="timeout"/> parameter indicates how long to wait for the confirmation from the broker. Use <code>TimeSpan.Zero</code>
+    /// for INFINITE timeout.
     /// </summary>
-    public void EnablePublisherConfirms(bool value = true)
+    public void EnablePublisherConfirms(bool value, TimeSpan timeout)
     {
+        if (timeout < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException($"Cannot use publisher confirms timeout value {timeout} - the value must be a positive TimeSpan, or TimeSpan.Zero for inifinite timeout");
+        }
+
         _publisherConfirmsEnabled = value;
+        _publisherConfirmsTimeout = timeout;
     }
 
     /// <summary>
@@ -254,37 +262,131 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
     /// </summary>
     public override void CreateQueue(string address)
     {
-        var connection = _connectionManager.GetConnection();
+        // bail out without creating a connection if there's no need for it
+        if (!_declareExchanges && !_declareInputQueue && !_bindInputQueue) return;
 
         try
         {
-            using var model = connection.CreateModel();
+            using var cancellationTokenSource = new CancellationTokenSource(delay: TimeSpan.FromSeconds(60));
 
-            const bool durable = true;
-
-            if (_declareExchanges)
+            while (true)
             {
-                model.ExchangeDeclare(_directExchangeName, ExchangeType.Direct, durable,
-                    arguments: _inputExchangeOptions.DirectExchangeArguments);
-                model.ExchangeDeclare(_topicExchangeName, ExchangeType.Topic, durable,
-                    arguments: _inputExchangeOptions.TopicExchangeArguments);
-            }
+                try
+                {
+                    var connection = _connectionManager.GetConnection();
 
-            if (_declareInputQueue)
-            {
-                DeclareQueue(address, model);
-            }
+                    using var model = connection.CreateModel();
 
-            if (_bindInputQueue)
-            {
-                BindInputQueue(address, model);
-            }
+                    const bool durable = true;
 
-            model.Close();
+                    if (_declareExchanges)
+                    {
+                        DeclareExchanges(model, durable);
+                    }
+
+                    if (_declareInputQueue)
+                    {
+                        DeclareQueue(address, model);
+                    }
+
+                    if (_bindInputQueue)
+                    {
+                        BindInputQueue(address, model);
+                    }
+
+                    model.Close();
+                    return;
+                }
+                catch (Exception) when (!cancellationTokenSource.IsCancellationRequested)
+                {
+                    // keep trying a couple of times
+                    Thread.Sleep(1000);
+                }
+            }
         }
         catch (Exception exception)
         {
             throw new RebusApplicationException(exception, $"Queue declaration for '{address}' failed");
+        }
+    }
+
+    public void DeclareDelayedMessageExchange(string exchangeName)
+    {
+        try
+        {
+            using var cancellationTokenSource = new CancellationTokenSource(delay: TimeSpan.FromSeconds(60));
+
+            while (true)
+            {
+                try
+                {
+                    var connection = _connectionManager.GetConnection();
+
+                    using var model = connection.CreateModel();
+
+                    model.ExchangeDeclare(
+                        exchange: exchangeName,
+                        type: "x-delayed-message",
+                        durable: true,
+                        autoDelete: false,
+                        arguments: new Dictionary<string, object> { ["x-delayed-type"] = "direct" }
+                    );
+
+                    model.Close();
+                    return;
+                }
+                catch (Exception) when (!cancellationTokenSource.IsCancellationRequested)
+                {
+                    // keep trying a couple of times
+                    Thread.Sleep(1000);
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            throw new RebusApplicationException(exception, $"Delayed message exchange declaration for '{exchangeName}' failed");
+        }
+    }
+
+    void DeclareExchanges(IModel model, bool durable)
+    {
+        model.ExchangeDeclare(
+            exchange: _directExchangeName,
+            type: ExchangeType.Direct,
+            durable: durable,
+            arguments: _inputExchangeOptions.DirectExchangeArguments
+        );
+        model.ExchangeDeclare(
+            exchange: _topicExchangeName,
+            type: ExchangeType.Topic,
+            durable: durable,
+            arguments: _inputExchangeOptions.TopicExchangeArguments
+        );
+    }
+
+    void DeclareQueue(string address, IModel model)
+    {
+        if (Equals(address, Address))
+        {
+            // This is the input queue => we use the queue setting to create the queue
+            model.QueueDeclare(
+                queue: address,
+                exclusive: _inputQueueOptions.Exclusive,
+                durable: _inputQueueOptions.Durable,
+                autoDelete: _inputQueueOptions.AutoDelete,
+                arguments: _inputQueueOptions.Arguments
+            );
+        }
+        else
+        {
+            // This is another queue, probably the error queue => we use the default queue options
+            model.QueueDeclare(
+                queue: address,
+                exclusive: _defaultQueueOptions.Exclusive,
+                durable: _defaultQueueOptions.Durable,
+                autoDelete: _defaultQueueOptions.AutoDelete,
+                arguments: _defaultQueueOptions.Arguments
+            );
         }
     }
 
@@ -293,34 +395,35 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
         model.QueueBind(address, _directExchangeName, address);
     }
 
-    void DeclareQueue(string address, IModel model)
-    {
-        if (Address != null && Address.Equals(address))
-        {
-            // This is the input queue => we use the queue setting to create the queue
-            model.QueueDeclare(address,
-                exclusive: _inputQueueOptions.Exclusive,
-                durable: _inputQueueOptions.Durable,
-                autoDelete: _inputQueueOptions.AutoDelete,
-                arguments: _inputQueueOptions.Arguments);
-        }
-        else
-        {
-            // This is another queue, probably the error queue => we use the default queue options
-            model.QueueDeclare(address,
-                exclusive: _defaultQueueOptions.Exclusive,
-                durable: _defaultQueueOptions.Durable,
-                autoDelete: _defaultQueueOptions.AutoDelete,
-                arguments: _defaultQueueOptions.Arguments);
-        }
-    }
-
 
     /// <inheritdoc />
-    protected override Task SendOutgoingMessages(IEnumerable<OutgoingMessage> outgoingMessages,
-        ITransactionContext context)
+    protected override async Task SendOutgoingMessages(IEnumerable<OutgoingTransportMessage> outgoingMessages, ITransactionContext context)
     {
-        return SendOutgoingMessages(outgoingMessages);
+        var messages = outgoingMessages
+            .Select(m => new { Message = m, IsExpress = m.TransportMessage.Headers.ContainsKey(Headers.Express) })
+            .ToList();
+
+        if (!messages.Any()) return;
+
+        var model = _writerPool.Get();
+
+        try
+        {
+            var expressMessages = messages.Where(m => m.IsExpress).Select(m => m.Message).ToList();
+            var ordinaryMessages = messages.Where(m => !m.IsExpress).Select(m => m.Message).ToList();
+
+            DoSend(expressMessages, model, isExpress: true);
+
+            DoSend(ordinaryMessages, model, isExpress: false);
+
+            _writerPool.Return(model);
+        }
+        catch (Exception)
+        {
+            // if anything goes wrong when using this IModel, just drop it
+            model.SafeDrop();
+            throw;
+        }
     }
 
     /// <summary>
@@ -438,9 +541,9 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
 
             var deliveryTag = result.DeliveryTag;
 
-            context.OnCompleted(async _ => { _consumer.Model.BasicAck(deliveryTag, multiple: false); });
+            context.OnAck(async _ => _consumer.Model.BasicAck(deliveryTag, multiple: false));
 
-            context.OnAborted(_ =>
+            context.OnNack(async _ =>
             {
                 // we might not be able to do this, but it doesn't matter that much if it succeeds
                 try
@@ -567,13 +670,11 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
         try
         {
             model = CreateChannel();
-            model.BasicQos(0, _maxMessagesToPrefetch, false);
+            model.BasicQos(prefetchSize: 0, prefetchCount: _maxMessagesToPrefetch, global: false);
 
             var consumer = new CustomQueueingConsumer(model);
 
-            const bool autoAck = false;
-
-            model.BasicConsume(Address, autoAck, consumer);
+            model.BasicConsume(queue: Address, autoAck: false, consumer: consumer);
 
             _log.Info("Successfully initialized consumer for {queueName}", Address);
 
@@ -581,6 +682,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
         }
         catch (OperationInterruptedException exception) when (exception.HasReplyCode(QueueDoesNotExist))
         {
+            model.SafeDrop();
             _log.Warn("Queue not found - attempting to recreate queue and restore subscriptions.");
             ReconnectQueue();
             return null;
@@ -588,41 +690,11 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
         catch (Exception)
         {
             model.SafeDrop();
-
             throw;
         }
     }
 
-    async Task SendOutgoingMessages(IEnumerable<OutgoingMessage> outgoingMessages)
-    {
-        var model = _writerPool.Get();
-        try
-        {
-            var expressGroups = outgoingMessages
-                .GroupBy(o => o.TransportMessage.Headers.ContainsKey(Headers.Express))
-                .OrderByDescending(g => g.Key); //< send express messages first
-
-            foreach (var expressGroup in expressGroups)
-            {
-                DoSend(expressGroup, model, isExpress: expressGroup.Key);
-            }
-        }
-        catch (Exception exception) when (exception is IOException || exception is SocketException || exception is AlreadyClosedException)
-        {
-            // if we come here, the connection is broken
-            try
-            {
-                model.Dispose();
-            }
-            catch { }
-
-            throw;
-        }
-
-        _writerPool.Return(model);
-    }
-
-    void DoSend(IEnumerable<OutgoingMessage> outgoingMessages, IModel model, bool isExpress)
+    void DoSend(IEnumerable<OutgoingTransportMessage> outgoingMessages, IModel model, bool isExpress)
     {
         if (_publisherConfirmsEnabled && !isExpress)
         {
@@ -665,11 +737,18 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
 
         if (_publisherConfirmsEnabled && !isExpress)
         {
-            var timeout = TimeSpan.FromSeconds(60);
-
-            model.WaitForConfirmsOrDie(timeout);
+            if (_publisherConfirmsTimeout == TimeSpan.Zero)
+            {
+                model.WaitForConfirmsOrDie();
+            }
+            else
+            {
+                model.WaitForConfirmsOrDie(_publisherConfirmsTimeout);
+            }
         }
     }
+
+    static readonly ConcurrentDictionary<string, (string, string)> ContentTypeHeadersToContentTypeAndCharsetMappings = new();
 
     static IBasicProperties CreateBasicProperties(IModel model, Dictionary<string, string> headers)
     {
@@ -695,30 +774,12 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
             props.UserId = userId;
         }
 
-        if (headers.TryGetValue(RabbitMqHeaders.ContentType, out var contentType))
+        if (headers.TryGetValue(RabbitMqHeaders.ContentType, out var contentTypeHeaderValue))
         {
-            var parts = contentType.Split(';');
+            var (contentType, charset) = ContentTypeHeadersToContentTypeAndCharsetMappings.GetOrAdd(contentTypeHeaderValue, GetContentTypeAndEncodingValues);
 
-            props.ContentType = parts[0];
-
-            // if the MIME type has parameters, then we see if there's a charset in there...
-            if (parts.Length > 1)
-            {
-                try
-                {
-                    var parameters = parts.Skip(1)
-                        .Select(p => p.Split('='))
-                        .ToDictionary(p => p.First(), p => p.LastOrDefault());
-
-                    if (parameters.TryGetValue("charset", out var charset))
-                    {
-                        props.ContentEncoding = charset;
-                    }
-                }
-                catch
-                {
-                }
-            }
+            props.ContentType = contentType;
+            props.ContentEncoding = charset;
         }
 
         if (headers.TryGetValue(RabbitMqHeaders.ContentEncoding, out var contentEncoding))
@@ -779,22 +840,48 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
                 {
                     if (kvp.Value != null)
                     {
+                        const int maxHeaderLengthInBytes = 2 << 15;
+
                         var value = kvp.Value;
+                        var bytes = HeaderValueEncoding.GetBytes(value);
 
-                        var rawBytes = HeaderValueEncoding.GetBytes(value);
-
-                        var length = Math.Min(rawBytes.Length, 2 << 15);
-
-                        var headerBytes = new byte[length];
-                        Buffer.BlockCopy(rawBytes, 0, headerBytes, 0, length);
-
-                        return (object)headerBytes;
+                        // be sure that header values aren't too big
+                        return bytes.Truncate(maxHeaderLengthInBytes);
                     }
-                    else
-                        return null;
+
+                    return default(object);
                 });
 
         return props;
+    }
+
+    static (string, string) GetContentTypeAndEncodingValues(string input)
+    {
+        var parts = input.Split(';');
+
+        var contentTypeResult = parts[0];
+        var charsetResult = default(string);
+
+        // if the MIME type has parameters, then we see if there's a charset in there...
+        if (parts.Length > 1)
+        {
+            try
+            {
+                var parameters = parts.Skip(1)
+                    .Select(p => p.Split('='))
+                    .ToDictionary(p => p.First(), p => p.LastOrDefault());
+
+                if (parameters.TryGetValue("charset", out var result))
+                {
+                    charsetResult = result;
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        return (contentTypeResult, charsetResult);
     }
 
     void EnsureQueueExists(FullyQualifiedRoutingKey routingKey, IModel model)
@@ -840,9 +927,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
     public void Dispose()
     {
         _writerPool.Dispose();
-
         _consumer?.Dispose();
-
         _connectionManager.Dispose();
     }
 
@@ -850,7 +935,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IDisposable, IInitializ
     /// Gets "subscriber addresses" as one single magic "queue address", which will be interpreted
     /// as a proper pub/sub topic when the time comes to send to it
     /// </summary>
-    public async Task<string[]> GetSubscriberAddresses(string topic)
+    public async Task<IReadOnlyList<string>> GetSubscriberAddresses(string topic)
     {
         return topic.Contains('@')
             ? new[] { topic }

@@ -17,7 +17,7 @@ using Rebus.Tests.Contracts.Extensions;
 
 #pragma warning disable 1998
 
-namespace Rebus.RabbitMq.Tests;
+namespace Rebus.RabbitMq.Tests
 
 [TestFixture]
 public class ReceiveNonRebusMessageWithRabbitMq : FixtureBase
