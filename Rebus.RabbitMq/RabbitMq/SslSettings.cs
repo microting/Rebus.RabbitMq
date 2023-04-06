@@ -9,9 +9,10 @@ namespace Rebus.RabbitMq;
 public class SslSettings
 {
     /// <summary>
-    /// Constructs an SslSettings 
+    /// Constructs an SslSettings
     /// </summary>
-    public SslSettings(bool enabled, string serverName, string certificatePath = "", string certPassphrase = "", SslProtocols version = SslProtocols.Tls, SslPolicyErrors acceptablePolicyErrors = SslPolicyErrors.None)
+    /// Setting SslProtofol to None will use the default value of SslProtocols.Tls12
+    public SslSettings(bool enabled, string serverName, string certificatePath = "", string certPassphrase = "", SslProtocols version = SslProtocols.None, SslPolicyErrors acceptablePolicyErrors = SslPolicyErrors.None)
     {
         Enabled = enabled;
         ServerName = serverName;
@@ -23,7 +24,7 @@ public class SslSettings
     }
 
     /// <summary>
-    /// specify if Ssl should indeed be used     
+    /// specify if Ssl should indeed be used
     /// </summary>
     public bool Enabled { get; set; }
 

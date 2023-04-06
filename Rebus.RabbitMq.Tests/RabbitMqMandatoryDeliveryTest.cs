@@ -66,10 +66,10 @@ public class RabbitMqMandatoryDeliveryTest : FixtureBase
     }
 
     /// <summary>
-    /// Exposes a potential problem with the mandatory delivery method: 
-    /// When the mandatory header is used and an exception is thrown in the handler. 
+    /// Exposes a potential problem with the mandatory delivery method:
+    /// When the mandatory header is used and an exception is thrown in the handler.
     /// Then the delivery to the error queue throws a MandatoryDeliveryException because a handler for BasicReturn is not configured on the server
-    /// 
+    ///
     /// sender -> mandatory message -> server
     /// server -> handler throws exception
     /// rebus -> transfer to error queue
@@ -129,7 +129,7 @@ public class RabbitMqMandatoryDeliveryTest : FixtureBase
         Configure.With(activator)
             .Logging(l => l.Console(minLevel: LogLevel.Warn))
             .Transport(t => t.UseRabbitMq(RabbitMqTransportFactory.ConnectionString, queueName))
-            .Options(o => o.SimpleRetryStrategy(maxDeliveryAttempts:1))
+            .Options(o => o.RetryStrategy(maxDeliveryAttempts:1))
             .Start();
 
         return activator;

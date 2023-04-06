@@ -31,7 +31,7 @@ public class RabbitMqRecovery : FixtureBase
         Console.WriteLine($"Expected test duration {expectedTestDuration}");
 
         using var activator = new BuiltinHandlerActivator();
-        
+
         var receivedMessages = 0;
         var allMessagesReceived = new ManualResetEvent(false);
 
@@ -54,7 +54,7 @@ public class RabbitMqRecovery : FixtureBase
             {
                 o.SetNumberOfWorkers(0);
                 o.SetMaxParallelism(1);
-                o.SimpleRetryStrategy(maxDeliveryAttempts: 1);
+                o.RetryStrategy(maxDeliveryAttempts: 1);
             })
             .Start();
 
