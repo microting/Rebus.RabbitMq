@@ -139,8 +139,16 @@
 ## 8.0.0
 * Update Rebus dependency to 7
 
-## 9.0.0-alpha01
+## 8.1.0
+* Correct how hostnames are passed to RabbitMQ's connection factory to enable proper failover
+
+## 9.0.1
 * Update to Rebus 8
+* Change SSL protocol default to NONE (i.e. leave it to the .NET framework or the operating system) - thanks [MrAdam]
+* Don't set URI on RabbitMQ's own connection factory to have it correctly be able to fail over when running with multiple nodes
+* Make 1/100th as many defensive calls to `QueueDeclarePassive` in the transport's `Receive` method
+* Fix bug that would accidentally use a /-prefixed virtual host when a virtual host was actually specified in the URI
+* Update RabbitMq.Client to 6.6.0
 
 ---
 
@@ -153,6 +161,7 @@
 [marcoariboni]: https://github.com/marcoariboni
 [mathiasnohall]: https://github.com/mathiasnohall
 [michalsteyn]: https://github.com/michalsteyn
+[MrAdam]: https://github.com/MrAdam
 [nebelx]: https://github.com/nebelx
 [pjh1974]: https://github.com/pjh1974
 [ronnyek]: https://github.com/ronnyek
