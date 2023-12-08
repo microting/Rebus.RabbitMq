@@ -16,10 +16,10 @@ jobs:
         host port: 5672
         rabbitmq user: 'guest'
         rabbitmq password: 'guest'
-    - name: Setup .NET 7.0
+    - name: Setup .NET 8.0
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 7.0.x
+        dotnet-version: 8.0.x
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
@@ -30,10 +30,10 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Setup .NET 7.0
+    - name: Setup .NET 8.0
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 7.0.x
+        dotnet-version: 8.0.x
     - name: Install rabbitmq
       shell: pwsh
       run: choco install rabbitmq -Version 3.8.5
@@ -50,10 +50,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Setup .NET 7.0
+    - name: Setup .NET 8.0
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 7.0.x
+        dotnet-version: 8.0.x
     - name: Install dependencies
       run: |
         dotnet clean
