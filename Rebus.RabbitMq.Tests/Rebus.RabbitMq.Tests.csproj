@@ -9,14 +9,15 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="microsoft.net.test.sdk" Version="17.9.0" />
+		<PackageReference Include="microsoft.net.test.sdk" Version="17.9.0" />
 		<PackageReference Include="nunit" Version="3.14.0" />
 		<PackageReference Include="NUnit3TestAdapter" Version="4.4.2">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="RabbitMQ.Client" Version="6.6.0" />
+		<PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
 		<PackageReference Include="Microting.Rebus" Version="8.0.2" />
-		<PackageReference Include="Microting.Rebus.Tests.Contracts" Version="8.0.1" />
+		<PackageReference Include="Microting.Rebus.Tests.Contracts" Version="8.0.2" />
 	</ItemGroup>
 	<ItemGroup>
 		<Folder Include="Internals\" />

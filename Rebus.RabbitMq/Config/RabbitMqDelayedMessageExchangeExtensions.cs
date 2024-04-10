@@ -1,4 +1,4 @@
-﻿// TODO uncomment when test platform is set correctly for enabling delayed message exchange plugin
+// TODO uncomment when test platform is set correctly for enabling delayed message exchange plugin
 // using System;
 // using System.Globalization;
 // using System.Threading;
