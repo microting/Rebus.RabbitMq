@@ -14,7 +14,7 @@ namespace Rebus.RabbitMq.Tests;
 [TestFixture]
 public class MoreCustomExchangeNamesTests : FixtureBase
 {
-    protected internal const string ConnectionString = RabbitMqTransportFactory.ConnectionString;
+    string ConnectionString => RabbitMqTestContainerManager.GetConnectionString();
 
     [Test]
     public async Task CanSendToAlternativeExchange()
