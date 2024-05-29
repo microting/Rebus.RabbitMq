@@ -26,27 +26,8 @@ jobs:
       run: dotnet build --no-restore -c Release
     - name: Test
       run: dotnet test Rebus.RabbitMq.Tests --no-build --verbosity normal -c Release
-  build-windows:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET 8.0
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: 8.0.x
-    - name: Install rabbitmq
-      shell: pwsh
-      run: choco install rabbitmq -Version 3.8.5
-    - name: Restore dependencies
-      run:  |
-        dotnet nuget locals all --clear
-        dotnet restore
-    - name: Build
-      run: dotnet build --no-restore -c Release
-    - name: Test
-      run: dotnet test Rebus.RabbitMq.Tests --no-build --verbosity normal -c Release
   deploy:
-    needs: [build-windows, build-ubuntu]
+    needs: [build-ubuntu]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
