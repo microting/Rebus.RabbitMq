@@ -49,19 +49,8 @@ public class TestRabbitExpress : FixtureBase
             .Transport(t => t.UseRabbitMq(RabbitMqTransportFactory.ConnectionString, _queueName).SetBatchSize(enableBatching ? 100 : 1))
             .Options(o => o.SetMaxParallelism(100))
             .Start();
-    }
 
-    [TestCase(10, true)]
-    [TestCase(10, false)]
-    [TestCase(10000, true)]
-    [TestCase(10000, false)]
-    public async Task TestPerformance(int messageCount, bool express)
-    {
-        var receivedMessages = 0L;
-
-        _bus.Advanced.Workers.SetNumberOfWorkers(0);
-
-        _activator.Handle<object>(async _ => Interlocked.Increment(ref receivedMessages));
+        bus.Advanced.Workers.SetNumberOfWorkers(0);
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -70,7 +59,6 @@ public class TestRabbitExpress : FixtureBase
         foreach (var batch in messages.Batch(100))
         {
             using var scope = new RebusTransactionScope();
-
 
             foreach (var msg in batch)
             {
