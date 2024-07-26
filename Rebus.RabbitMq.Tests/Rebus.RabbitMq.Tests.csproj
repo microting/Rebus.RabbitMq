@@ -17,7 +17,7 @@
 		</PackageReference>
 		<PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
 		<PackageReference Include="Microting.Rebus" Version="8.0.5" />
-		<PackageReference Include="Microting.Rebus.Tests.Contracts" Version="8.0.4" />
+		<PackageReference Include="Microting.Rebus.Tests.Contracts" Version="8.0.5" />
 		<PackageReference Include="Testcontainers.RabbitMq" Version="3.9.0" />
 	</ItemGroup>
 	<ItemGroup>
