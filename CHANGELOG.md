@@ -164,6 +164,19 @@
 ## 9.3.0
 * Enable setting the consumer tag - thanks [savissimo]
 
+## 9.3.1
+* Get delivery count with `BitConverter` if the header value is `byte[]`
+
+## 9.3.6
+* Interpret delivery count header value as ASCII text with a number, when the type encountered is `byte[]`
+* Ensure that RabbitMQ's built-in quorum queue header `x-delivery-count` is cleared when a message is dead-lettered
+
+## 9.4.0
+* Screen the `IModel` for fitness before trying to send with it, and perform send operations with up to 3 attempts to hopefully better overcome transient errors
+
+## 9.4.1
+* Fix potential race condition in ModelObjectPool - thanks [mksergiy]
+
 ---
 
 [bzuu]: https://github.com/bzuu
@@ -175,6 +188,7 @@
 [marcoariboni]: https://github.com/marcoariboni
 [mathiasnohall]: https://github.com/mathiasnohall
 [michalsteyn]: https://github.com/michalsteyn
+[mksergiy]: https://github.com/mksergiy
 [MrAdam]: https://github.com/MrAdam
 [nebelx]: https://github.com/nebelx
 [pjh1974]: https://github.com/pjh1974
@@ -184,4 +198,3 @@
 [savissimo]: https://github.com/savissimo
 [yuriyostapenko]: https://github.com/yuriyostapenko
 [zlepper]: https://github.com/zlepper
-
