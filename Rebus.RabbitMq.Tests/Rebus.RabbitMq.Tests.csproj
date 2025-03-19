@@ -2,7 +2,9 @@
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
 		<TargetFramework>net9.0</TargetFramework>
-		<LangVersion>10</LangVersion>
+		<LangVersion>12</LangVersion>
+		<!-- NUnit1032: things should be disposed in methods annotated with `teardown` -->
+		<NoWarn>NUnit1032</NoWarn>
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Rebus.RabbitMq\Rebus.RabbitMq.csproj" />
@@ -10,11 +12,15 @@
 	<ItemGroup>
 		<PackageReference Include="microsoft.net.test.sdk" Version="17.12.0" />
 		<PackageReference Include="nunit" Version="3.14.0" />
+		<PackageReference Include="NUnit.Analyzers" Version="4.6.0">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 		<PackageReference Include="NUnit3TestAdapter" Version="4.6.0">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+		<PackageReference Include="RabbitMQ.Client" Version="7.0.0" />
 		<PackageReference Include="Microting.Rebus" Version="9.0.0" />
 		<PackageReference Include="Microting.Rebus.Tests.Contracts" Version="9.0.0" />
 		<PackageReference Include="Testcontainers.RabbitMq" Version="3.9.0" />
