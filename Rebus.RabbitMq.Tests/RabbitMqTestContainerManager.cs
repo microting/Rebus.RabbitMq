@@ -15,7 +15,7 @@ public class RabbitMqTestContainerManager
     {
         Console.WriteLine("Starting RabbitMQ test container");
 
-        _container = new RabbitMqBuilder().WithImage(image: "rabbitmq:3.8.9-management-alpine")
+        _container = new RabbitMqBuilder().WithImage(image: "rabbitmq:3-management-alpine")
             .Build();
         await _container.StartAsync();
     }
