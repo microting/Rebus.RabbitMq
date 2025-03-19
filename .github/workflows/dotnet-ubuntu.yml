@@ -2,9 +2,9 @@ name: .NET Ubuntu
 
 on:
   push:
-    branches: [ master,net50 ]
+    branches: [ master ]
   pull_request:
-    branches: [ master,net50 ]
+    branches: [ master ]
 
 jobs:
   build:
@@ -12,15 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: getong/rabbitmq-action@v1.2
-      with:
-        rabbitmq version: '3.8.2-management-alpine'
-        host port: 5672
-        rabbitmq user: 'guest'
-        rabbitmq password: 'guest'
+    - uses: actions/checkout@v3
     - name: Setup .NET 9.0
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 9.0.x
     - name: Restore dependencies
