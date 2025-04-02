@@ -12,7 +12,7 @@
 	<ItemGroup>
 		<PackageReference Include="microsoft.net.test.sdk" Version="17.13.0" />
 		<PackageReference Include="nunit" Version="3.14.0" />
-		<PackageReference Include="NUnit.Analyzers" Version="4.6.0">
+		<PackageReference Include="NUnit.Analyzers" Version="4.7.0">
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
