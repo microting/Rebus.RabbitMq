@@ -1,9 +1,12 @@
 version: 2
 updates:
 - package-ecosystem: nuget
-  directory: "/"
+  directory: "/Rebus.RabbitMq"
   schedule:
     interval: daily
     time: "04:00"
-  open-pull-requests-limit: 10
-  target-branch: master
+- package-ecosystem: nuget
+  directory: "/Rebus.RabbitMq.Tests"
+  schedule:
+    interval: daily
+    time: "04:00"
