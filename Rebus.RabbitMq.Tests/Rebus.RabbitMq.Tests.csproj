@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
 		<TargetFramework>net9.0</TargetFramework>
-		<LangVersion>12</LangVersion>
+		<LangVersion>13</LangVersion>
 		<!-- NUnit1032: things should be disposed in methods annotated with `teardown` -->
 		<NoWarn>NUnit1032</NoWarn>
 	</PropertyGroup>
