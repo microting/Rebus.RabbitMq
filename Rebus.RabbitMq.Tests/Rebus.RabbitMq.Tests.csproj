@@ -10,7 +10,7 @@
 		<ProjectReference Include="..\Rebus.RabbitMq\Rebus.RabbitMq.csproj" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="microsoft.net.test.sdk" Version="18.0.0" />
+		<PackageReference Include="microsoft.net.test.sdk" Version="18.0.1" />
 		<PackageReference Include="nunit" Version="4.4.0" />
 		<PackageReference Include="NUnit.Analyzers" Version="4.11.2">
 		  <PrivateAssets>all</PrivateAssets>
