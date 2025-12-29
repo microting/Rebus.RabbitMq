@@ -436,6 +436,8 @@ public class RabbitMqOptionsBuilder
         {
             _decoratedFactory = originalFacotry;
             _clientProvidedName = clientProvidedName;
+
+            _decoratedFactory.ClientProvidedName = clientProvidedName;
         }
 
         public IAuthMechanismFactory AuthMechanismFactory(IEnumerable<string> mechanismNames)
