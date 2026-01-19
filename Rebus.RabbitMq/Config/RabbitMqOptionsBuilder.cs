@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Client;
 using Rebus.RabbitMq;
@@ -52,7 +51,7 @@ public class RabbitMqOptionsBuilder
             throw new InvalidOperationException("Attempted to register a connection factory customization function, but one has already been registered");
         }
 
-        ConnectionFactoryCustomizer = customizer ?? throw new ArgumentNullException(nameof(customizer));
+        ConnectionFactoryCustomizer = customizer ?? throw new ArgumentNullException(nameof(customizer), "Please provide a connection factory customizer function when calling this method");
 
         return this;
     }
@@ -249,10 +248,10 @@ public class RabbitMqOptionsBuilder
     /// Set the connection_name property (user-friendly non-unique client connection name) of RabbitMQ connection, which is 
     /// shown in the connections overview list and in the client properites of a connection.         
     /// </summary>
-    /// <exception cref="InvalidOperationException">expcetion is thrown if another connection factory customizer is in use</exception>
-    public RabbitMqOptionsBuilder ClientConnectionName(string connectionName)
+    public RabbitMqOptionsBuilder SetConnectionName(string connectionName)
     {
-        return CustomizeConnectionFactory(factory => new ConnectionFactoryClientNameDecorator(factory, connectionName));
+        ConnectionName = connectionName;
+        return this;
     }
 
     /// <summary>
@@ -274,6 +273,7 @@ public class RabbitMqOptionsBuilder
     internal string TopicExchangeName { get; private set; }
     
     internal string ConsumerTag { get; private set; }
+    internal string ConnectionName { get; private set; }
 
     internal int? MaxNumberOfMessagesToPrefetch { get; private set; }
 
@@ -344,137 +344,5 @@ public class RabbitMqOptionsBuilder
         transport.SetDefaultQueueOptions(DefaultQueueOptionsBuilder);
         transport.SetExchangeOptions(ExchangeOptions);
         transport.SetConsumerTag(ConsumerTag);
-    }
-
-    /// This is temporary decorator-fix, until Rebus is upgraded to a version 6+ of RabbitMQ.Client wich has new signature:
-    /// IConnection CreateConnection(IList AmqpTcpEndpoint endpoints, string clientProvidedName) 
-    /// so it is more correct to provide the name of client connection in ConnectionManager.GetConnection() method, when connections are created.
-    class ConnectionFactoryClientNameDecorator : IConnectionFactory
-    {
-        private readonly IConnectionFactory _decoratedFactory;
-        private readonly string _clientProvidedName;
-
-        public IDictionary<string, object> ClientProperties
-        {
-            get { return _decoratedFactory.ClientProperties; }
-            set { _decoratedFactory.ClientProperties = value; }
-        }
-
-        public TimeSpan ContinuationTimeout
-        {
-            get { return _decoratedFactory.ContinuationTimeout; }
-            set { _decoratedFactory.ContinuationTimeout = value; }
-        }
-
-        public ushort ConsumerDispatchConcurrency
-        {
-            get => _decoratedFactory.ConsumerDispatchConcurrency;
-            set => _decoratedFactory.ConsumerDispatchConcurrency = value;
-        }
-
-        public TimeSpan HandshakeContinuationTimeout
-        {
-            get { return _decoratedFactory.HandshakeContinuationTimeout; }
-            set { _decoratedFactory.HandshakeContinuationTimeout = value; }
-        }
-
-        public string Password
-        {
-            get { return _decoratedFactory.Password; }
-            set { _decoratedFactory.Password = value; }
-        }
-
-        public ICredentialsProvider CredentialsProvider
-        {
-            get { return _decoratedFactory.CredentialsProvider; }
-            set { _decoratedFactory.CredentialsProvider = value; }
-        }
-
-        public ushort RequestedChannelMax
-        {
-            get { return _decoratedFactory.RequestedChannelMax; }
-            set { _decoratedFactory.RequestedChannelMax = value; }
-        }
-
-        public uint RequestedFrameMax
-        {
-            get { return _decoratedFactory.RequestedFrameMax; }
-            set { _decoratedFactory.RequestedFrameMax = value; }
-        }
-
-        public TimeSpan RequestedHeartbeat
-        {
-            get { return _decoratedFactory.RequestedHeartbeat; }
-            set { _decoratedFactory.RequestedHeartbeat = value; }
-        }
-
-        public Uri Uri
-        {
-            get { return _decoratedFactory.Uri; }
-            set { _decoratedFactory.Uri = value; }
-        }
-
-        public string UserName
-        {
-            get { return _decoratedFactory.UserName; }
-            set { _decoratedFactory.UserName = value; }
-        }
-
-        public string VirtualHost
-        {
-            get { return _decoratedFactory.VirtualHost; }
-            set { _decoratedFactory.VirtualHost = value; }
-        }
-
-        public string ClientProvidedName
-        {
-            get { return _decoratedFactory.ClientProvidedName; }
-            set { _decoratedFactory.ClientProvidedName = value; }
-        }
-
-        public ConnectionFactoryClientNameDecorator(IConnectionFactory originalFacotry, string clientProvidedName)
-        {
-            _decoratedFactory = originalFacotry;
-            _clientProvidedName = clientProvidedName;
-
-            _decoratedFactory.ClientProvidedName = clientProvidedName;
-        }
-
-        public IAuthMechanismFactory AuthMechanismFactory(IEnumerable<string> mechanismNames)
-        {
-            return _decoratedFactory.AuthMechanismFactory(mechanismNames);
-        }
-
-        public Task<IConnection> CreateConnectionAsync(CancellationToken cancellationToken = default)
-        {
-            return _decoratedFactory.CreateConnectionAsync(cancellationToken);
-        }
-
-        public Task<IConnection> CreateConnectionAsync(string clientProvidedName, CancellationToken cancellationToken = default)
-        {
-            return _decoratedFactory.CreateConnectionAsync(clientProvidedName, cancellationToken);
-        }
-
-        public Task<IConnection> CreateConnectionAsync(IEnumerable<string> hostnames, CancellationToken cancellationToken = default)
-        {
-            return _decoratedFactory.CreateConnectionAsync(hostnames, cancellationToken);
-        }
-
-        public Task<IConnection> CreateConnectionAsync(IEnumerable<string> hostnames, string clientProvidedName,
-            CancellationToken cancellationToken = default)
-        {
-            return _decoratedFactory.CreateConnectionAsync(hostnames, clientProvidedName, cancellationToken);
-        }
-
-        public Task<IConnection> CreateConnectionAsync(IEnumerable<AmqpTcpEndpoint> endpoints, CancellationToken cancellationToken = default)
-        {
-            return _decoratedFactory.CreateConnectionAsync(endpoints, cancellationToken);
-        }
-
-        public Task<IConnection> CreateConnectionAsync(IEnumerable<AmqpTcpEndpoint> endpoints, string clientProvidedName,
-            CancellationToken cancellationToken = default)
-        {
-            return _decoratedFactory.CreateConnectionAsync(endpoints, clientProvidedName, cancellationToken);
-        }
     }
 }

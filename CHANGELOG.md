@@ -193,6 +193,10 @@
 ## 10.1.0
 * Even more defensive measures to detect errors on the channel and force it to be re-initialized
 
+## 10.1.1
+* Pass custom connection name to customized connection factory - thanks [MarkMenchavez]
+* Clean up unnecessary code and pass custom connection name to connection
+
 ---
 
 [bzuu]: https://github.com/bzuu
@@ -202,6 +206,7 @@
 [K3llr]: https://github.com/K3llr
 [kyrrem]: https://github.com/kyrrem
 [marcoariboni]: https://github.com/marcoariboni
+[MarkMenchavez]: https://github.com/MarkMenchavez
 [mathiasnohall]: https://github.com/mathiasnohall
 [michalsteyn]: https://github.com/michalsteyn
 [mksergiy]: https://github.com/mksergiy

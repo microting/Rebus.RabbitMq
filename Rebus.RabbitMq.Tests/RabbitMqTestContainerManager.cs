@@ -8,27 +8,32 @@ namespace Rebus.RabbitMq.Tests;
 [SetUpFixture]
 public class RabbitMqTestContainerManager
 {
-    static RabbitMqContainer _container;
-
-    [OneTimeSetUp]
-    public async Task StartRabbitMq()
+    static readonly Lazy<RabbitMqContainer> _container = new(() =>
     {
+        var container = new RabbitMqBuilder().Build();
+
         Console.WriteLine("Starting RabbitMQ test container");
 
-        _container = new RabbitMqBuilder().Build();
-        await _container.StartAsync();
-    }
+        container.StartAsync().GetAwaiter().GetResult();
+
+        return container;
+    });
 
     [OneTimeTearDown]
     public async Task StopRabbitMq()
     {
+        if (!_container.IsValueCreated) return;
+
+        var container = _container.Value;
+
         Console.WriteLine("Stopping RabbitMQ test container");
 
-        await _container.StopAsync();
-        await _container.DisposeAsync();
+        await container.StopAsync();
+        await container.DisposeAsync();
     }
 
-    public static string GetConnectionString() => _container.GetConnectionString();
+    public static string GetConnectionString() => "amqp://localhost:5672";
+    //public static string GetConnectionString() => _container.Value.GetConnectionString();
 
     public static CustomContainer GetCustomContainer(Func<RabbitMqBuilder, RabbitMqBuilder> build)
     {

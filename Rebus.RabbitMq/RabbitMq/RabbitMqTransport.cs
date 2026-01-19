@@ -12,7 +12,6 @@ using Rebus.Transport;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -102,13 +101,19 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
     ///  Credentials will be extracted from the connectionString of the first provided endpoint
     /// </summary>
     public RabbitMqTransport(IList<ConnectionEndpoint> endpoints, string inputQueueAddress,
-        IRebusLoggerFactory rebusLoggerFactory, int maxMessagesToPrefetch = 50,
+        IRebusLoggerFactory rebusLoggerFactory, string connectionName = null, int maxMessagesToPrefetch = 50,
         Func<IConnectionFactory, IConnectionFactory> customizer = null)
         : this(rebusLoggerFactory, maxMessagesToPrefetch, inputQueueAddress)
     {
         if (endpoints == null) throw new ArgumentNullException(nameof(endpoints));
 
-        _connectionManager = new ConnectionManager(endpoints, inputQueueAddress, rebusLoggerFactory, customizer);
+        _connectionManager = new ConnectionManager(
+            endpoints: endpoints,
+            inputQueueAddress: inputQueueAddress,
+            clientProvidedName: connectionName,
+            rebusLoggerFactory: rebusLoggerFactory,
+            customizer: customizer
+        );
     }
 
     /// <summary>
@@ -116,14 +121,19 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
     /// Multiple connection strings could be provided. They should be separates with , or ; 
     /// </summary>
     public RabbitMqTransport(string connectionString, string inputQueueAddress,
-        IRebusLoggerFactory rebusLoggerFactory, int maxMessagesToPrefetch = 50,
+        IRebusLoggerFactory rebusLoggerFactory, string connectionName = null, int maxMessagesToPrefetch = 50,
         Func<IConnectionFactory, IConnectionFactory> customizer = null)
         : this(rebusLoggerFactory, maxMessagesToPrefetch, inputQueueAddress)
     {
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
 
-        _connectionManager =
-            new ConnectionManager(connectionString, inputQueueAddress, rebusLoggerFactory, customizer);
+        _connectionManager = new ConnectionManager(
+            connectionString: connectionString,
+            inputQueueAddress: inputQueueAddress,
+            clientProvidedName: connectionName,
+            rebusLoggerFactory: rebusLoggerFactory,
+            customizer: customizer
+        );
     }
 
     public void SetBlockOnReceive(bool blockOnReceive) => _blockOnReceive = blockOnReceive;
@@ -286,7 +296,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
             {
                 try
                 {
-                    var connection = await _connectionManager.GetConnection(cancellationTokenSource.Token);
+                    var connection = await _connectionManager.GetConnectionAsync(cancellationTokenSource.Token);
 
                     await using var model = await connection.CreateChannelAsync(cancellationToken: cancellationTokenSource.Token);
 
@@ -333,7 +343,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
             {
                 try
                 {
-                    var connection = await _connectionManager.GetConnection(cancellationTokenSource.Token);
+                    var connection = await _connectionManager.GetConnectionAsync(cancellationTokenSource.Token);
 
                     await using var model = await connection.CreateChannelAsync(cancellationToken: cancellationTokenSource.Token);
 
@@ -436,7 +446,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
     /// </summary>
     public async Task PurgeInputQueue()
     {
-        var connection = await _connectionManager.GetConnection();
+        var connection = await _connectionManager.GetConnectionAsync();
 
         await using var model = await connection.CreateChannelAsync();
 
@@ -746,7 +756,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
 
     async ValueTask<IChannel> CreateChannel(CancellationToken cancellationToken = default)
     {
-        var connection = await _connectionManager.GetConnection(cancellationToken);
+        var connection = await _connectionManager.GetConnectionAsync(cancellationToken);
 
         var createChannelOptions = new CreateChannelOptions(publisherConfirmationsEnabled: _publisherConfirmsEnabled, publisherConfirmationTrackingEnabled: _publisherConfirmsEnabled);
         try
@@ -768,7 +778,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
         // `IModel`/`IChannel` is now thread-safe as per https://github.com/rabbitmq/rabbitmq-dotnet-client/issues/1722
         // So no reason to use one per publish, just keep it around.
 
-        var connection = await _connectionManager.GetConnection(cancellationToken);
+        var connection = await _connectionManager.GetConnectionAsync(cancellationToken);
 
         // double-checked locking pattern around re-initialization
         if (_publishers is { confirmedPublisher.IsOpen: true, expressPublisher.IsOpen: true } currentPublishers)
@@ -1144,7 +1154,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
     /// </summary>
     public async Task RegisterSubscriber(string topic, string subscriberAddress)
     {
-        var connection = await _connectionManager.GetConnection();
+        var connection = await _connectionManager.GetConnectionAsync();
         var subscription = ParseSubscription(topic, subscriberAddress);
 
         _log.Debug("Registering subscriber {subscription}", subscription);
@@ -1173,7 +1183,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
     /// </summary>
     public async Task UnregisterSubscriber(string topic, string subscriberAddress)
     {
-        var connection = await _connectionManager.GetConnection();
+        var connection = await _connectionManager.GetConnectionAsync();
         var subscription = ParseSubscription(topic, subscriberAddress);
 
         _log.Debug("Unregistering subscriber {subscription}", subscription);

@@ -14,17 +14,19 @@ namespace Rebus.Internals;
 class ConnectionManager : IAsyncDisposable
 {
     readonly SemaphoreSlim _activeConnectionLock = new(1, 1);
-    readonly IConnectionFactory _connectionFactory;
     readonly IList<AmqpTcpEndpoint> _amqpTcpEndpoints;
+    readonly IConnectionFactory _connectionFactory;
+    readonly string _clientProvidedName;
     readonly ILog _log;
 
     IConnection _activeConnection;
     bool _disposed;
 
-    public ConnectionManager(IList<ConnectionEndpoint> endpoints, string inputQueueAddress, IRebusLoggerFactory rebusLoggerFactory, Func<IConnectionFactory, IConnectionFactory> customizer)
+    public ConnectionManager(IList<ConnectionEndpoint> endpoints, string inputQueueAddress, string clientProvidedName, IRebusLoggerFactory rebusLoggerFactory, Func<IConnectionFactory, IConnectionFactory> customizer)
     {
         if (endpoints == null) throw new ArgumentNullException(nameof(endpoints));
         if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
+        _clientProvidedName = clientProvidedName;
 
         _log = rebusLoggerFactory.GetLogger<ConnectionManager>();
 
@@ -85,10 +87,11 @@ class ConnectionManager : IAsyncDisposable
 
     }
 
-    public ConnectionManager(string connectionString, string inputQueueAddress, IRebusLoggerFactory rebusLoggerFactory, Func<IConnectionFactory, IConnectionFactory> customizer)
+    public ConnectionManager(string connectionString, string inputQueueAddress, string clientProvidedName, IRebusLoggerFactory rebusLoggerFactory, Func<IConnectionFactory, IConnectionFactory> customizer)
     {
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
         if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
+        _clientProvidedName = clientProvidedName;
 
         _log = rebusLoggerFactory.GetLogger<ConnectionManager>();
 
@@ -147,7 +150,7 @@ class ConnectionManager : IAsyncDisposable
             AutomaticRecoveryEnabled = true,
             NetworkRecoveryInterval = TimeSpan.FromSeconds(30),
             ClientProperties = CreateClientProperties(inputQueueAddress),
-            
+
             VirtualHost = GetVirtualHostPath()
         };
 
@@ -167,11 +170,11 @@ class ConnectionManager : IAsyncDisposable
         }
     }
 
-    public async ValueTask<IConnection> GetConnection(CancellationToken cancellationToken = default)
+    public async ValueTask<IConnection> GetConnectionAsync(CancellationToken cancellationToken = default)
     {
         var connection = _activeConnection;
 
-        if (connection != null && connection.IsOpen)
+        if (connection?.IsOpen == true)
         {
             return connection;
         }
@@ -195,7 +198,7 @@ class ConnectionManager : IAsyncDisposable
                     await connection.CloseAsync(cancellationToken);
                     await connection.DisposeAsync();
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     _log.Debug("Exception thrown while closing and disposing connection. This can probably be ignored, but for good measure, here it is: {exception}", e);
                 }
@@ -203,7 +206,11 @@ class ConnectionManager : IAsyncDisposable
 
             try
             {
-                _activeConnection = await _connectionFactory.CreateConnectionAsync(_amqpTcpEndpoints, cancellationToken);
+                _activeConnection = await _connectionFactory.CreateConnectionAsync(
+                    endpoints: _amqpTcpEndpoints,
+                    clientProvidedName: _clientProvidedName,
+                    cancellationToken: cancellationToken
+                );
 
                 return _activeConnection;
             }
@@ -241,7 +248,7 @@ class ConnectionManager : IAsyncDisposable
                 }
                 catch
                 {
-                    
+
                 }
                 finally
                 {
@@ -287,7 +294,7 @@ class ConnectionManager : IAsyncDisposable
         return sslOption;
     }
 
-    private IDictionary<string, object> CreateClientProperties(string inputQueueAddress)
+    static IDictionary<string, object> CreateClientProperties(string inputQueueAddress)
     {
         var properties = new Dictionary<string, object>
         {

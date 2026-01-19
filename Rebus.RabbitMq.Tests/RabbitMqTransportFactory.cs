@@ -10,8 +10,7 @@ namespace Rebus.RabbitMq.Tests;
 
 public class RabbitMqTransportFactory : ITransportFactory
 {
-    // connection string for default docker instance
-    public static string ConnectionString => RabbitMqTestContainerManager.GetConnectionString();// "amqp://guest:guest@localhost:5672";
+    public static string ConnectionString => RabbitMqTestContainerManager.GetConnectionString();
 
     readonly List<IDisposable> _disposables = new();
     readonly List<IAsyncDisposable> _asyncDisposables = new();
