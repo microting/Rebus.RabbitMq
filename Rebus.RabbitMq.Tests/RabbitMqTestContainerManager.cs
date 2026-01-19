@@ -32,8 +32,8 @@ public class RabbitMqTestContainerManager
         await container.DisposeAsync();
     }
 
-    public static string GetConnectionString() => "amqp://localhost:5672";
-    //public static string GetConnectionString() => _container.Value.GetConnectionString();
+    //public static string GetConnectionString() => "amqp://localhost:5672";
+    public static string GetConnectionString() => _container.Value.GetConnectionString();
 
     public static CustomContainer GetCustomContainer(Func<RabbitMqBuilder, RabbitMqBuilder> build)
     {
