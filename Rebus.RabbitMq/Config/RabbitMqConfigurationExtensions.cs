@@ -27,7 +27,7 @@ public static class RabbitMqConfigurationExtensions
     {
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
 
-        return BuildInternal(configurer, true, (context, options) => new RabbitMqTransport(connectionString, null, context.Get<IRebusLoggerFactory>(), customizer: options.ConnectionFactoryCustomizer));
+        return BuildInternal(configurer, true, (context, options) => new RabbitMqTransport(connectionString, null, context.Get<IRebusLoggerFactory>(), customizer: options.ConnectionFactoryCustomizer, connectionName: options.ConnectionName));
     }
 
     /// <summary>
@@ -37,7 +37,7 @@ public static class RabbitMqConfigurationExtensions
     {
         if (endpoints == null) throw new ArgumentNullException(nameof(endpoints));
 
-        return BuildInternal(configurer, true, (context, options) => new RabbitMqTransport(endpoints, null, context.Get<IRebusLoggerFactory>(), customizer: options.ConnectionFactoryCustomizer));
+        return BuildInternal(configurer, true, (context, options) => new RabbitMqTransport(endpoints, null, context.Get<IRebusLoggerFactory>(), customizer: options.ConnectionFactoryCustomizer, connectionName: options.ConnectionName));
     }
 
     /// <summary>
@@ -48,7 +48,7 @@ public static class RabbitMqConfigurationExtensions
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
         if (inputQueueName == null) throw new ArgumentNullException(nameof(inputQueueName));
 
-        return BuildInternal(configurer, false, (context, options) => new RabbitMqTransport(connectionString, inputQueueName, context.Get<IRebusLoggerFactory>(), customizer: options.ConnectionFactoryCustomizer));
+        return BuildInternal(configurer, false, (context, options) => new RabbitMqTransport(connectionString, inputQueueName, context.Get<IRebusLoggerFactory>(), customizer: options.ConnectionFactoryCustomizer, connectionName: options.ConnectionName));
     }
 
     /// <summary>
@@ -59,7 +59,7 @@ public static class RabbitMqConfigurationExtensions
         if (endpoints == null) throw new ArgumentNullException(nameof(endpoints));
         if (inputQueueName == null) throw new ArgumentNullException(nameof(inputQueueName));
 
-        return BuildInternal(configurer, false, (context, options) => new RabbitMqTransport(endpoints, inputQueueName, context.Get<IRebusLoggerFactory>(), customizer: options.ConnectionFactoryCustomizer));
+        return BuildInternal(configurer, false, (context, options) => new RabbitMqTransport(endpoints, inputQueueName, context.Get<IRebusLoggerFactory>(), customizer: options.ConnectionFactoryCustomizer, connectionName: options.ConnectionName));
     }
 
     static RabbitMqOptionsBuilder BuildInternal(StandardConfigurer<ITransport> configurer, bool oneway, Func<IResolutionContext, RabbitMqOptionsBuilder, RabbitMqTransport> rabbitMqTransportBuilder)
