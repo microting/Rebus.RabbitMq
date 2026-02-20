@@ -1,4 +1,15 @@
-﻿using System;
+﻿using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
+using Rebus.Bus;
+using Rebus.Config;
+using Rebus.Exceptions;
+using Rebus.Internals;
+using Rebus.Logging;
+using Rebus.Messages;
+using Rebus.Subscriptions;
+using Rebus.Transport;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
@@ -8,17 +19,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
-using RabbitMQ.Client.Exceptions;
-using Rebus.Bus;
-using Rebus.Logging;
-using Rebus.Messages;
-using Rebus.Subscriptions;
-using Rebus.Transport;
-using Rebus.Config;
-using Rebus.Exceptions;
-using Rebus.Internals;
 using Headers = Rebus.Messages.Headers;
 
 // ReSharper disable AccessToDisposedClosure
@@ -101,13 +101,19 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
     ///  Credentials will be extracted from the connectionString of the first provided endpoint
     /// </summary>
     public RabbitMqTransport(IList<ConnectionEndpoint> endpoints, string inputQueueAddress,
-        IRebusLoggerFactory rebusLoggerFactory, int maxMessagesToPrefetch = 50,
+        IRebusLoggerFactory rebusLoggerFactory, string connectionName = null, int maxMessagesToPrefetch = 50,
         Func<IConnectionFactory, IConnectionFactory> customizer = null)
         : this(rebusLoggerFactory, maxMessagesToPrefetch, inputQueueAddress)
     {
         if (endpoints == null) throw new ArgumentNullException(nameof(endpoints));
 
-        _connectionManager = new ConnectionManager(endpoints, inputQueueAddress, rebusLoggerFactory, customizer);
+        _connectionManager = new ConnectionManager(
+            endpoints: endpoints,
+            inputQueueAddress: inputQueueAddress,
+            clientProvidedName: connectionName,
+            rebusLoggerFactory: rebusLoggerFactory,
+            customizer: customizer
+        );
     }
 
     /// <summary>
@@ -115,14 +121,19 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
     /// Multiple connection strings could be provided. They should be separates with , or ; 
     /// </summary>
     public RabbitMqTransport(string connectionString, string inputQueueAddress,
-        IRebusLoggerFactory rebusLoggerFactory, int maxMessagesToPrefetch = 50,
+        IRebusLoggerFactory rebusLoggerFactory, string connectionName = null, int maxMessagesToPrefetch = 50,
         Func<IConnectionFactory, IConnectionFactory> customizer = null)
         : this(rebusLoggerFactory, maxMessagesToPrefetch, inputQueueAddress)
     {
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
 
-        _connectionManager =
-            new ConnectionManager(connectionString, inputQueueAddress, rebusLoggerFactory, customizer);
+        _connectionManager = new ConnectionManager(
+            connectionString: connectionString,
+            inputQueueAddress: inputQueueAddress,
+            clientProvidedName: connectionName,
+            rebusLoggerFactory: rebusLoggerFactory,
+            customizer: customizer
+        );
     }
 
     public void SetBlockOnReceive(bool blockOnReceive) => _blockOnReceive = blockOnReceive;
@@ -285,7 +296,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
             {
                 try
                 {
-                    var connection = await _connectionManager.GetConnection(cancellationTokenSource.Token);
+                    var connection = await _connectionManager.GetConnectionAsync(cancellationTokenSource.Token);
 
                     await using var model = await connection.CreateChannelAsync(cancellationToken: cancellationTokenSource.Token);
 
@@ -332,7 +343,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
             {
                 try
                 {
-                    var connection = await _connectionManager.GetConnection(cancellationTokenSource.Token);
+                    var connection = await _connectionManager.GetConnectionAsync(cancellationTokenSource.Token);
 
                     await using var model = await connection.CreateChannelAsync(cancellationToken: cancellationTokenSource.Token);
 
@@ -419,29 +430,15 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
         var expressMessages = messages.Where(m => m.IsExpress).Select(m => m.Message).ToList();
         var ordinaryMessages = messages.Where(m => !m.IsExpress).Select(m => m.Message).ToList();
 
-        var attempt = 0;
-
-        while (true)
+        await MiniRetrier.ExecuteAsync(WriterAttempts, async () =>
         {
             var (expressChannel, confirmedChannel) = await GetPublisherChannels();
-
-            try
-            {
-                // otherwise, count this as an attempt and try to do it
-                attempt++;
-
-                // Should we consider rewriting this to iterate messages and then delegate to express vs confirmed based 
-                // on `Message.IsExpress`? It would avoid creating the temporary lists above, however it would make retrying
-                // strange i think.
-                await DoSend(expressMessages, expressChannel, isExpress: true);
-                await DoSend(ordinaryMessages, confirmedChannel, isExpress: false);
-
-                return; //< success - we're done!
-            }
-            catch (Exception) when (attempt <= WriterAttempts) //< if the built-in number of retries has been exceeded, let the error bubble out
-            {
-            }
-        }
+            // Should we consider rewriting this to iterate messages and then delegate to express vs confirmed based 
+            // on `Message.IsExpress`? It would avoid creating the temporary lists above, however it would make retrying
+            // strange i think.
+            await DoSend(expressMessages, expressChannel, isExpress: true);
+            await DoSend(ordinaryMessages, confirmedChannel, isExpress: false);
+        });
     }
 
     /// <summary>
@@ -449,7 +446,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
     /// </summary>
     public async Task PurgeInputQueue()
     {
-        var connection = await _connectionManager.GetConnection();
+        var connection = await _connectionManager.GetConnectionAsync();
 
         await using var model = await connection.CreateChannelAsync();
 
@@ -554,8 +551,19 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
 
             context.OnAck(async _ =>
             {
-                // intentionally not cancellable - if we get this far, we want to succeed in ACKing if at all possible
-                await consumer.Channel.BasicAckAsync(deliveryTag, multiple: false, CancellationToken.None);
+                try
+                {
+                    await MiniRetrier.ExecuteAsync(3, async () =>
+                    {
+                        // intentionally not cancellable - if we get this far, we want to succeed in ACKing if at all possible
+                        await consumer.Channel.BasicAckAsync(deliveryTag, multiple: false, CancellationToken.None);
+                    });
+                }
+                catch (Exception exception)
+                {
+                    _log.Warn(exception, "BasicAck failed - disposing consumer to start over");
+                    await DisposeConsumerAsync(writeWarning: false, cancellationToken: cancellationToken);
+                }
             });
 
             context.OnNack(async _ =>
@@ -563,11 +571,16 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
                 // we might not be able to do this, but it doesn't matter that much if it succeeds
                 try
                 {
-                    // intentionally not cancellable - if we get this far, we want to succeed in NACKing if at all possible
-                    await consumer.Channel.BasicNackAsync(deliveryTag, multiple: false, requeue: true, CancellationToken.None);
+                    await MiniRetrier.ExecuteAsync(3, async () =>
+                    {
+                        // intentionally not cancellable - if we get this far, we want to succeed in NACKing if at all possible
+                        await consumer.Channel.BasicNackAsync(deliveryTag, multiple: false, requeue: true, CancellationToken.None);
+                    });
                 }
-                catch
+                catch (Exception exception)
                 {
+                    _log.Warn(exception, "BasicNack failed - disposing consumer to start over");
+                    await DisposeConsumerAsync(writeWarning: false, cancellationToken: cancellationToken);
                 }
             });
 
@@ -743,7 +756,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
 
     async ValueTask<IChannel> CreateChannel(CancellationToken cancellationToken = default)
     {
-        var connection = await _connectionManager.GetConnection(cancellationToken);
+        var connection = await _connectionManager.GetConnectionAsync(cancellationToken);
 
         var createChannelOptions = new CreateChannelOptions(publisherConfirmationsEnabled: _publisherConfirmsEnabled, publisherConfirmationTrackingEnabled: _publisherConfirmsEnabled);
         try
@@ -765,7 +778,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
         // `IModel`/`IChannel` is now thread-safe as per https://github.com/rabbitmq/rabbitmq-dotnet-client/issues/1722
         // So no reason to use one per publish, just keep it around.
 
-        var connection = await _connectionManager.GetConnection(cancellationToken);
+        var connection = await _connectionManager.GetConnectionAsync(cancellationToken);
 
         // double-checked locking pattern around re-initialization
         if (_publishers is { confirmedPublisher.IsOpen: true, expressPublisher.IsOpen: true } currentPublishers)
@@ -1141,7 +1154,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
     /// </summary>
     public async Task RegisterSubscriber(string topic, string subscriberAddress)
     {
-        var connection = await _connectionManager.GetConnection();
+        var connection = await _connectionManager.GetConnectionAsync();
         var subscription = ParseSubscription(topic, subscriberAddress);
 
         _log.Debug("Registering subscriber {subscription}", subscription);
@@ -1170,7 +1183,7 @@ public class RabbitMqTransport : AbstractRebusTransport, IAsyncDisposable, IDisp
     /// </summary>
     public async Task UnregisterSubscriber(string topic, string subscriberAddress)
     {
-        var connection = await _connectionManager.GetConnection();
+        var connection = await _connectionManager.GetConnectionAsync();
         var subscription = ParseSubscription(topic, subscriberAddress);
 
         _log.Debug("Unregistering subscriber {subscription}", subscription);

@@ -1,4 +1,4 @@
-﻿// TODO uncomment when the Rebus.ServciceProvider is ready
+// TODO uncomment when the Rebus.ServciceProvider is ready
 // using System.Threading.Tasks;
 // using Microsoft.Extensions.DependencyInjection;
 // using NUnit.Framework;
