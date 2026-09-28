@@ -11,7 +11,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="microsoft.net.test.sdk" Version="18.10.1" />
-		<PackageReference Include="nunit" Version="4.6.1" />
+		<PackageReference Include="nunit" Version="5.0.0" />
 		<PackageReference Include="NUnit.Analyzers" Version="4.15.0">
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
